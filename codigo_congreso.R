@@ -1,4 +1,5 @@
-# Packages
+# Topic modeling congreso
+# packages ----------------------------------------------------------------
 library(tidyverse)
 library(tm)
 library(topicmodels)
@@ -7,15 +8,17 @@ library(stringr)
 library(vhmo)
 
 Sys.setlocale("LC_ALL", "es_ES.UTF-8")
-# Load texts 
-data_emol <- read_delim("data_emol3.csv", "\t", escape_double = FALSE, locale = locale(encoding = "UTF-8"), 
-                         na = "NA", trim_ws = TRUE)
 
-data_cnn <- read_delim("data_cnn.csv", "\t", escape_double = FALSE, locale = locale(encoding = "UTF-8"), 
+Sys.setlocale(category="LC_ALL", locale = "en_US.UTF-8")
+
+# Load data ---------------------------------------------------------------
+data_emol <- read_delim("data_emol3.csv", "\t", escape_double = TRUE, 
                         na = "NA", trim_ws = TRUE)
+# data_cnn <- read_delim("data_cnn.csv", "\t", escape_double = FALSE, locale = locale(encoding = "UTF-8"), 
+#                         na = "NA", trim_ws = TRUE)
 
-data_emol=data_emol %>% na.omit()                   
-data_cnn=data_cnn %>% na.omit()                   
+data_emol=data_emol %>% na.omit()            
+# data_cnn=data_cnn %>% na.omit()                   
 
 data_limpia_emol=data_emol %>% 
   mutate(ciudad=substr(str_match(contenido,"\\w+.-"),1,3)) %>% 
@@ -23,12 +26,34 @@ data_limpia_emol=data_emol %>%
 
 # Eliminar contenido vacio
 data_limpia_emol=data_limpia_emol %>% 
-  mutate(enc=Encoding(contenido)) %>% 
-  filter(contenido!="" & enc!="unknown")
+  #mutate(enc=Encoding(contenido)) %>% 
+  #filter(contenido!="" & enc!="unknown")
+  filter(contenido!="")
 
-data_limpia_cnn=data_cnn %>% 
-  mutate(enc=Encoding(contenido)) %>% 
-  filter(contenido!="" & enc!="unknown")
+Encoding(data_limpia_emol$contenido)<-"UTF-8"
+
+caracter=as.vector(as.character(data_limpia_emol %>% 
+  filter(number==562) %>% 
+  select(contenido)))
+str(caracter)
+lista=str_split(caracter," ")
+
+ifelse(lista=="también", print(lista),"")
+
+caracter=c("SANTIAGO.- Los diputados de la bancada transversal sobre Seguridad, 
+Daniel Farcas (PPD), Gonzalo Fuenzalida (RN), Claudia Nogueira (UDI), 
+Gabriel Silber (DC) y Marcela Sabat (RN), presentaron este martes un proyecto de ley 
+que permite la detención")
+
+str_detect(caracter,"presentaron")
+
+
+data_limpia_emol %>% 
+  mutate(tiene=str_detect(as.character(contenido),"más")) %>% 
+  filter(tiene==TRUE)
+# data_limpia_cnn=data_cnn %>% 
+#   mutate(enc=Encoding(contenido)) %>% 
+#   filter(contenido!="" & enc!="unknown")
 
 # fecha emol
 patt= "([0-9]{2})(.+de)(.+)(de.+)([0-9]{4})|([0-9]{2})[/]([0-9]{2})[/]([0-9]{4})"
@@ -42,52 +67,59 @@ anio=parse_col[,6]
 fecha_emol=as.Date(paste0(anio,mes,dia), "%Y%m%d")
 
 # fecha cnn
-patt= "([0-9]{2})(.+de)(.+)(,.+)([0-9]{4})|([0-9]{2})[/]([0-9]{2})[/]([0-9]{4})"
-meses=c("enero","febrero","marzo","abril",
-        "mayo","junio","julio","agosto",
-        "septiembre","octubre","noviembre","diciembre")
-parse_col=str_match(data_limpia_cnn$fecha, patt)
-dia=parse_col[,2]
-mes=str_sub(paste0("0",match(tolower(trim(parse_col[,4])),meses)),-2)
-anio=parse_col[,6]
-fecha_cnn=as.Date(paste0(anio,mes,dia), "%Y%m%d")
+# patt= "([0-9]{2})(.+de)(.+)(,.+)([0-9]{4})|([0-9]{2})[/]([0-9]{2})[/]([0-9]{4})"
+# meses=c("enero","febrero","marzo","abril",
+#         "mayo","junio","julio","agosto",
+#         "septiembre","octubre","noviembre","diciembre")
+# parse_col=str_match(data_limpia_cnn$fecha, patt)
+# dia=parse_col[,2]
+# mes=str_sub(paste0("0",match(tolower(trim(parse_col[,4])),meses)),-2)
+# anio=parse_col[,6]
+# fecha_cnn=as.Date(paste0(anio,mes,dia), "%Y%m%d")
 
-
-contenido_emol=enc2utf8(data_limpia_emol$contenido)
-contenido_cnn=enc2utf8(data_limpia_cnn$contenido)
+#contenido_emol=enc2utf8(data_limpia_emol$contenido)
+contenido_emol=data_limpia_emol$contenido
+# contenido_cnn=enc2utf8(data_limpia_cnn$contenido)
 
 contenido_emol[1]
-contenido_cnn[1]
+# contenido_cnn[1]
 ## cleaning the content
 contenido_emol=tolower(contenido_emol)
-contenido_cnn=tolower(contenido_cnn)
+# contenido_cnn=tolower(contenido_cnn)
 # delete location
-contenido_emol = str_replace(contenido_emol,"\\w+.-", " ")
+contenido_emol = str_replace(contenido_emol,"\\w+.-", "")
 # delete &
-contenido_emol = str_replace_all(contenido_emol,"&amp", " ")
-contenido_cnn = str_replace_all(contenido_cnn,"&amp", " ")
+contenido_emol = str_replace_all(contenido_emol,"&amp", "")
+# contenido_cnn = str_replace_all(contenido_cnn,"&amp", " ")
 # delete punctuation
-contenido_emol = str_replace_all(contenido_emol,"[[:punct:]]", " ")
-contenido_cnn = str_replace_all(contenido_cnn,"[[:punct:]]", " ")
+contenido_emol = str_replace_all(contenido_emol,"[[:punct:]]", "")
+# contenido_cnn = str_replace_all(contenido_cnn,"[[:punct:]]", " ")
 # delete urls
 contenido_emol = str_replace_all(contenido_emol,"http\\w+", "")
-contenido_cnn = str_replace_all(contenido_cnn,"http\\w+", "")
+# contenido_cnn = str_replace_all(contenido_cnn,"http\\w+", "")
 # delete tabs
 contenido_emol = str_replace_all(contenido_emol,"[\t]{2,}", "")
-contenido_cnn = str_replace_all(contenido_cnn,"[\t]{2,}", "")
+# contenido_cnn = str_replace_all(contenido_cnn,"[\t]{2,}", "")
 # delete spaces
 contenido_emol = str_replace_all(contenido_emol,"^\\s+|\\s+$", "")
-contenido_cnn = str_replace_all(contenido_cnn,"^\\s+|\\s+$", "")
-# stripWhitespace
-contenido_emol=stripWhitespace(contenido_emol)
-contenido_cnn=stripWhitespace(contenido_cnn)
+# contenido_cnn = str_replace_all(contenido_cnn,"^\\s+|\\s+$", "")
 # delete numbers
 contenido_emol=removeNumbers(contenido_emol)
-contenido_cnn=removeNumbers(contenido_cnn)
+# contenido_cnn=removeNumbers(contenido_cnn)
+# stripWhitespace
+contenido_emol=stripWhitespace(contenido_emol)
+# contenido_cnn=stripWhitespace(contenido_cnn)
+
+contenido_emol=PlainTextDocument(contenido_emol)
+
+#contenido_emol=enc2utf8(contenido_emol)
+#contenido_emol <- iconv(contenido_emol, from="UTF-8", to="LATIN1")
+
 
 ### prueba 
 library(tidytext)
-stop_list=c(unlist(lapply(stopwords("es"),as.character)),"dijo","dice")
+stop_list=c(stopwords("es"),"dijo","dice")
+stop_df=data.frame(word=stop_list,stringsAsFactors=FALSE)
 
 contenido_emol2= str_replace(contenido_emol,"emolmlt.*|tablaennoticia.*|simbologia mapa.*","")
 contenido_emol2= str_replace_all(contenido_emol2,"\\bmás\\b","")
@@ -96,13 +128,14 @@ lala=data.frame(num=seq(1,length(contenido_emol2)),
                 fecha=fecha_emol,contenido=contenido_emol2, stringsAsFactors = FALSE) %>% 
   unite(num_fecha,num,fecha) %>% 
   unnest_tokens(word,contenido) %>% 
-  anti_join(data.frame(word=stop_list,stringsAsFactors=FALSE),by="word") %>%
+  mutate(word=as.character(word)) %>% 
+  anti_join(stop_df,by="word") %>%
   count(num_fecha, word, sort = TRUE) %>%
   ungroup()
 
-lala %>% 
-  filter(word=="más") %>% 
-  distinct(num_fecha)
+lala %>% filter(word=="más")
+
+palabra_discoridia=as.character(lala[26,2])
 
 ejemp=data.frame(num=seq(1,length(contenido_emol2)),
                  fecha=fecha_emol,contenido=contenido_emol2, stringsAsFactors = FALSE) %>% 
